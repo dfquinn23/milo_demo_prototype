@@ -1,18 +1,18 @@
 import streamlit as st
+import pandas as pd
 import time
-from datetime import datetime
 import json
+from datetime import datetime, timedelta
+import numpy as np
 
-# Import your MILO crew (assuming the previous code is in milo_crew.py)
-# from milo_crew import execute_annual_review_prep
-
+# Page config
 st.set_page_config(
     page_title="MILO Client Intelligence Dashboard",
     page_icon="🤖",
     layout="wide"
 )
 
-# Custom CSS for better styling
+# Custom CSS
 st.markdown("""
 <style>
 .main-header {
@@ -57,7 +57,7 @@ def main():
                 unsafe_allow_html=True)
     st.markdown('<p style="text-align: center; color: #666;">Embedded AI Assistant for Crescent Grove Advisors</p>', unsafe_allow_html=True)
 
-    # Sidebar for client selection and parameters
+    # Sidebar
     with st.sidebar:
         st.header("Client Selection")
         client_name = st.selectbox(
@@ -71,11 +71,6 @@ def main():
             ["Past Year", "Past 6 Months", "Past Quarter"]
         )
 
-        include_performance = st.checkbox(
-            "Include Performance Analysis", value=True)
-        include_communications = st.checkbox(
-            "Include Communications Review", value=True)
-
         st.header("Client Overview")
         st.markdown(f"""
         **{client_name}**
@@ -85,7 +80,7 @@ def main():
         - Advisor: Sarah Johnson
         """)
 
-    # Main content area
+    # Main content
     col1, col2 = st.columns([2, 1])
 
     with col1:
@@ -105,8 +100,6 @@ def main():
 
     with col2:
         st.header("Quick Stats")
-
-        # Mock quick stats
         st.metric("YTD Return", "8.2%", "1.2%")
         st.metric("Portfolio Value", "$2.5M", "$180K")
         st.metric("Last Contact", "Sep 15", "-30 days")
@@ -118,15 +111,13 @@ def main():
             "Bonds": 25,
             "Alternatives": 5
         }
-
         for asset, allocation in portfolio_data.items():
             st.write(f"**{asset}:** {allocation}%")
             st.progress(allocation / 100)
 
 
 def execute_milo_analysis(client_name, query):
-    """Execute the MILO crew analysis and display results"""
-
+    """Execute the MILO analysis simulation"""
     st.markdown("---")
     st.header("🤖 MILO Analysis in Progress")
 
@@ -141,7 +132,7 @@ def execute_milo_analysis(client_name, query):
         "meeting_prep": st.empty()
     }
 
-    # Simulate the three-agent workflow
+    # Simulate three-agent workflow
     agents = [
         ("Communications Analyst", "Analyzing client emails and meeting transcripts..."),
         ("Portfolio Performance Analyst",
@@ -153,7 +144,6 @@ def execute_milo_analysis(client_name, query):
     results = {}
 
     for i, (agent_name, task_description) in enumerate(agents):
-
         # Update progress
         progress = (i + 1) / len(agents)
         progress_bar.progress(progress)
@@ -169,17 +159,17 @@ def execute_milo_analysis(client_name, query):
         # Simulate processing time
         time.sleep(2)
 
-        # Show completion and results
+        # Show completion
         agent_containers[agent_key].markdown(
             f'<div class="agent-status agent-complete">✅ {agent_name}: Complete</div>',
             unsafe_allow_html=True
         )
 
-        # Generate mock results for each agent
+        # Generate mock results
         if "Communications" in agent_name:
-            results["communications"] = generate_mock_communications_analysis()
+            results["communications"] = generate_mock_communications()
         elif "Performance" in agent_name:
-            results["performance"] = generate_mock_performance_analysis()
+            results["performance"] = generate_mock_performance()
         elif "Meeting" in agent_name:
             results["meeting_prep"] = generate_mock_meeting_prep()
 
@@ -187,11 +177,11 @@ def execute_milo_analysis(client_name, query):
     status_text.text("✅ Analysis Complete!")
 
     # Display results
-    display_analysis_results(results)
+    display_results(results)
 
 
-def generate_mock_communications_analysis():
-    """Generate mock communications analysis results"""
+def generate_mock_communications():
+    """Generate mock communications analysis"""
     return {
         "timeline": [
             {"date": "Jan 15, 2024", "type": "Email",
@@ -209,12 +199,12 @@ def generate_mock_communications_analysis():
             "College funding planning (2025)",
             "Interest rate sensitivity"
         ],
-        "client_sentiment": "Generally satisfied but seeks more communication during market stress"
+        "sentiment": "Generally satisfied but seeks more communication during market stress"
     }
 
 
-def generate_mock_performance_analysis():
-    """Generate mock performance analysis results"""
+def generate_mock_performance():
+    """Generate mock performance analysis"""
     return {
         "portfolio_return": 8.2,
         "ips_target": "7-9%",
@@ -226,13 +216,12 @@ def generate_mock_performance_analysis():
             "VGSLX": {"return": 15.3, "allocation": 5},
             "VTABX": {"return": 1.8, "allocation": 5}
         },
-        "needs_rebalancing": False,
-        "risk_metrics": {"volatility": "12.3%", "sharpe_ratio": "0.85"}
+        "needs_rebalancing": False
     }
 
 
 def generate_mock_meeting_prep():
-    """Generate mock meeting preparation materials"""
+    """Generate mock meeting prep materials"""
     return {
         "executive_summary": "Smith Family Trust portfolio performed well in 2024 with 8.2% return, meeting IPS objectives. Key focus areas: ESG alignment, college planning, and market communication preferences.",
         "talking_points": [
@@ -250,18 +239,12 @@ def generate_mock_meeting_prep():
             "Schedule 529 plan funding review",
             "Set up quarterly market update emails",
             "Review beneficiary designations"
-        ],
-        "conversation_starters": [
-            "How are you feeling about the college timeline approaching?",
-            "What are your thoughts on the current ESG landscape?",
-            "Any changes in your financial situation we should discuss?"
         ]
     }
 
 
-def display_analysis_results(results):
-    """Display the comprehensive analysis results"""
-
+def display_results(results):
+    """Display comprehensive analysis results"""
     st.markdown("---")
     st.header("📊 Annual Review Analysis Results")
 
@@ -269,7 +252,7 @@ def display_analysis_results(results):
     st.subheader("Executive Summary")
     st.info(results["meeting_prep"]["executive_summary"])
 
-    # Create tabs for different sections
+    # Tabs for different sections
     tab1, tab2, tab3, tab4 = st.tabs(
         ["📞 Communications", "📈 Performance", "💬 Talking Points", "✅ Action Items"])
 
@@ -286,11 +269,10 @@ def display_analysis_results(results):
             st.markdown(f"• {theme}")
 
         st.subheader("Client Sentiment")
-        st.write(results["communications"]["client_sentiment"])
+        st.write(results["communications"]["sentiment"])
 
     with tab2:
         col1, col2, col3 = st.columns(3)
-
         with col1:
             st.metric("Portfolio Return",
                       f"{results['performance']['portfolio_return']}%", "Above Target")
@@ -298,17 +280,12 @@ def display_analysis_results(results):
             st.metric("vs Benchmark",
                       results['performance']['benchmark_comparison'])
         with col3:
-            st.metric("Sharpe Ratio",
-                      results['performance']['risk_metrics']['sharpe_ratio'])
+            st.metric("IPS Compliance", "✅ Within Range")
 
         st.subheader("Individual Fund Performance")
         for fund, data in results['performance']['individual_funds'].items():
             st.write(
                 f"**{fund}**: {data['return']}% (Allocation: {data['allocation']}%)")
-
-        rebalancing_status = "✅ No rebalancing needed" if not results[
-            'performance']['needs_rebalancing'] else "⚠️ Rebalancing recommended"
-        st.write(f"**Rebalancing Status**: {rebalancing_status}")
 
     with tab3:
         st.subheader("Meeting Talking Points")
@@ -319,10 +296,6 @@ def display_analysis_results(results):
             </div>
             """, unsafe_allow_html=True)
 
-        st.subheader("Conversation Starters")
-        for starter in results["meeting_prep"]["conversation_starters"]:
-            st.markdown(f"💬 *{starter}*")
-
     with tab4:
         st.subheader("Recommended Action Items")
         for item in results["meeting_prep"]["action_items"]:
@@ -331,9 +304,8 @@ def display_analysis_results(results):
         st.subheader("Follow-up Schedule")
         st.write("📅 Next Review: January 2025")
         st.write("📧 Quarterly Updates: March, June, September 2025")
-        st.write("📞 Check-in Call: After Q1 2025 performance")
 
-    # Download button for the report
+    # Download button
     st.markdown("---")
     if st.button("📄 Download Full Report"):
         st.success(
