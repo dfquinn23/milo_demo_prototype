@@ -1,0 +1,6 @@
+ticker,name,weight,sleeve
+VTI,Total US Stock,0.38,Equity
+VXUS,Total Intl Stock,0.2,Equity
+BND,Total US Bond,0.24,Fixed Income
+TLT,US Long Treasury,0.1,Fixed Income
+VNQ,US REITs,0.08,Real Assets
