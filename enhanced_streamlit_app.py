@@ -239,10 +239,10 @@ def main():
 
         # Show query analysis preview
         if query.strip():
-            query_preview = analyze_query_preview(query)
+            query_preview = analyze_query(query)
             st.markdown(f"""
             <div class="query-focus-badge">
-                🎯 Query Focus: {query_preview['focus']} | Type: {query_preview['type']}
+                🎯 Query Focus: {query_preview['primary_focus']} | Type: {query_preview['query_type']}
             </div>
             """, unsafe_allow_html=True)
 
@@ -252,7 +252,7 @@ def main():
         with col_btn1:
             if st.button("🚀 Generate Focused Analysis", type="primary", use_container_width=True):
                 if query.strip():
-                    run_enhanced_milo_analysis(client_name, query)
+                    execute_enhanced_milo_analysis(client_name, query)
                 else:
                     st.error("Please enter a question about the client.")
 
