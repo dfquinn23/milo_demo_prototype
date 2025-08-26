@@ -8,6 +8,19 @@ import time
 import json
 from datetime import datetime
 import pandas as pd
+import os
+import tempfile
+
+# ── Feature flag: keep vector DB OFF by default ──────────────────────────────
+# Turn ON by setting USE_VECTOR_DB=1 in your environment (e.g., Streamlit Cloud secrets)
+USE_VECTOR_DB = os.getenv("USE_VECTOR_DB", "0") == "1"
+
+# If vector DB is enabled, force Chroma to DuckDB+Parquet (no SQLite dependency)
+if USE_VECTOR_DB:
+    os.environ["CHROMA_DB_IMPL"] = "duckdb+parquet"
+    os.environ["PERSIST_DIRECTORY"] = os.path.join(
+        tempfile.gettempdir(), "chroma_db")
+
 
 # Force Chroma to use sentence-transformers instead of ONNX
 # from chromadb.utils import embedding_functions
