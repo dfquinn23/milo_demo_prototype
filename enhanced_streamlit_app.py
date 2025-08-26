@@ -10,7 +10,7 @@ from datetime import datetime
 import pandas as pd
 
 # Import the enhanced MILO crew
-# from enhanced_milo_agents import execute_enhanced_milo_analysis, analyze_query
+from enhanced_milo_agents import execute_enhanced_milo_analysis, analyze_query
 
 st.set_page_config(
     page_title="MILO Client Intelligence Dashboard",
