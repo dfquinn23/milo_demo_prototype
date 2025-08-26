@@ -9,8 +9,13 @@ import json
 from datetime import datetime
 import pandas as pd
 
-# Import the enhanced MILO crew
-from enhanced_milo_agents import execute_enhanced_milo_analysis, analyze_query
+# Force Chroma to use sentence-transformers instead of ONNX
+# from chromadb.utils import embedding_functions
+
+
+# Import the enhanced MILO functions - MAKE SURE THESE MATCH YOUR FILE NAMES
+# If you saved the enhanced agents as 'enhanced_milo_agents.py', use:
+# from enhanced_milo_agents import execute_enhanced_milo_analysis, analyze_query_preview
 
 st.set_page_config(
     page_title="MILO Client Intelligence Dashboard",
@@ -116,6 +121,257 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# ============================================================================
+# LOCAL QUERY PREVIEW FUNCTION (since we can't always import)
+# ============================================================================
+
+
+def analyze_query_preview(query: str) -> dict:
+    """Local query preview function with debug info"""
+
+    query_lower = query.lower()
+    st.write(f"🔍 **ANALYZING:** '{query_lower}'")
+
+    focus_keywords = {
+        "ESG/Sustainability": ["esg", "sustainable", "environmental", "values", "green", "ethical"],
+        "Performance": ["performance", "returns", "gains", "profit", "growth", "return"],
+        "Family/Personal": ["family", "daughter", "college", "personal", "emma", "linda"],
+        "Risk/Volatility": ["risk", "volatility", "concerned", "safe", "conservative"],
+        "Communication": ["communication", "contact", "meeting", "updates"],
+        "Portfolio": ["portfolio", "allocation", "funds", "holdings"]
+    }
+
+    # Find best match with debug info
+    best_focus = "General"
+    max_matches = 0
+    match_details = {}
+
+    for focus, keywords in focus_keywords.items():
+        matches = sum(1 for keyword in keywords if keyword in query_lower)
+        match_details[focus] = matches
+        if matches > max_matches:
+            max_matches = matches
+            best_focus = focus
+
+    # DEBUG: Show all matches
+    st.write("🎯 **KEYWORD MATCHES:**")
+    for focus, count in match_details.items():
+        st.write(f"  - {focus}: {count} matches")
+    st.write(f"**WINNER: {best_focus}** ({max_matches} matches)")
+
+    # Determine query type
+    if any(word in query_lower for word in ["what", "tell", "show"]):
+        query_type = "Informational"
+    elif any(word in query_lower for word in ["should", "recommend"]):
+        query_type = "Advisory"
+    elif any(word in query_lower for word in ["how", "why", "when"]):
+        query_type = "Analytical"
+    else:
+        query_type = "General"
+
+    return {"focus": best_focus, "type": query_type}
+
+# ============================================================================
+# MOCK RESULTS GENERATION (for when agents aren't available)
+# ============================================================================
+
+
+def generate_mock_enhanced_results(query: str, focus: str):
+    """Generate mock results for demo when agents aren't available"""
+
+    # DEBUG: Show what we're generating
+    st.write(f"🔧 **GENERATING MOCK RESULTS FOR:** {focus}")
+
+    if focus == "ESG/Sustainability":
+        return {
+            "communications": {
+                "total_interactions": 8,
+                "focused_timeline": [
+                    {"date": "Aug 15, 2024", "type": "Meeting",
+                        "summary": "ESG expansion discussion - family values alignment", "relevance": 10},
+                    {"date": "Apr 10, 2024", "type": "Meeting",
+                        "summary": "VSGX transition planning", "relevance": 10},
+                    {"date": "Jan 15, 2024", "type": "Email",
+                        "summary": "Initial ESG concerns about VTIAX", "relevance": 9}
+                ],
+                "key_themes": [
+                    "Strong family commitment to ESG investing driven by Emma's interests",
+                    "Successful VSGX transition with competitive performance",
+                    "Values alignment now as important as returns"
+                ]
+            },
+            "performance": {
+                "portfolio_return": 8.2,
+                "esg_performance": {
+                    "VSGX": {"return": 5.8, "allocation": 15},
+                    "transition_impact": "Minimal performance difference"
+                }
+            },
+            "meeting_prep": {
+                "executive_summary": "ESG Integration Success: VSGX performing competitively while achieving family values alignment. Emma's environmental interests driving strong commitment to sustainable investing.",
+                "targeted_talking_points": [
+                    {"priority": 1, "topic": "ESG Success",
+                        "point": "VSGX performing competitively - values achieved without return sacrifice"},
+                    {"priority": 2, "topic": "Family Values",
+                        "point": "Emma's influence creating meaningful investment alignment"}
+                ],
+                "action_items": ["Research additional ESG options", "Explore green bonds", "Schedule ESG family discussion"],
+                "conversation_starters": ["Emma must be proud that your investments reflect your values..."]
+            }
+        }
+
+    elif focus == "Performance":
+        return {
+            "communications": {
+                "total_interactions": 8,
+                "focused_timeline": [
+                    {"date": "Aug 15, 2024", "type": "Meeting",
+                        "summary": "YTD 7.8% performance review - exceeding targets", "relevance": 10},
+                    {"date": "Jun 22, 2024", "type": "Email",
+                        "summary": "Rate environment optimization questions", "relevance": 8},
+                    {"date": "Apr 10, 2024", "type": "Meeting",
+                        "summary": "Strong YTD 6.8% performance celebration", "relevance": 9}
+                ],
+                "key_themes": [
+                    "Consistent satisfaction with risk-adjusted returns",
+                    "Growing sophistication in performance analysis",
+                    "ESG integration without performance sacrifice",
+                    "All asset classes contributing positively"
+                ]
+            },
+            "performance": {
+                "portfolio_return": 8.2,
+                "detailed_performance": {
+                    "vs_ips": "Exceeding midpoint target",
+                    "sharpe_ratio": 0.89,
+                    "top_performer": "VGSLX at 15.3%"
+                }
+            },
+            "meeting_prep": {
+                "executive_summary": "Strong Performance: Portfolio delivering 8.2% return, exceeding IPS targets. All asset classes contributing positively with excellent risk management.",
+                "targeted_talking_points": [
+                    {"priority": 1, "topic": "Exceptional Returns",
+                        "point": "8.2% return exceeding IPS midpoint target"},
+                    {"priority": 2, "topic": "Risk Management",
+                        "point": "Strong performance with controlled volatility"},
+                    {"priority": 3, "topic": "Diversification Success",
+                        "point": "Every asset class adding value to portfolio"}
+                ],
+                "action_items": ["Continue quarterly monitoring", "Maintain allocation strategy", "Prepare attribution analysis"],
+                "conversation_starters": ["I'm excited to share your exceptional performance results..."]
+            }
+        }
+
+    elif focus == "Family/Personal":
+        return {
+            "communications": {
+                "total_interactions": 8,
+                "focused_timeline": [
+                    {"date": "Aug 15, 2024", "type": "Meeting",
+                        "summary": "Linda's first joint meeting - family team strengthened", "relevance": 10},
+                    {"date": "Jul 18, 2024", "type": "Call",
+                        "summary": "Northwestern campus visit - Emma's excitement", "relevance": 9},
+                    {"date": "Apr 10, 2024", "type": "Meeting",
+                        "summary": "Northwestern acceptance celebration!", "relevance": 10}
+                ],
+                "key_themes": [
+                    "Northwestern acceptance - successful planning milestone",
+                    "Linda's involvement strengthening family decisions",
+                    "Emma's financial education accelerating through internship",
+                    "Multi-generational approach to financial planning"
+                ]
+            },
+            "performance": {
+                "portfolio_return": 8.2,
+                "college_funding": {
+                    "annual_need": "$35K",
+                    "funding_status": "On track"
+                }
+            },
+            "meeting_prep": {
+                "executive_summary": "Family Milestone Year: Northwestern acceptance represents successful planning. College funding on track. Strong family engagement in financial decisions.",
+                "targeted_talking_points": [
+                    {"priority": 1, "topic": "Northwestern Achievement",
+                        "point": "Emma's acceptance represents successful long-term planning"},
+                    {"priority": 2, "topic": "Family Team",
+                        "point": "Linda's involvement strengthening financial decisions"},
+                    {"priority": 3, "topic": "Emma's Growth",
+                        "point": "Summer internship developing financial sophistication"}
+                ],
+                "action_items": ["Finalize college funding timeline", "Plan Linda's retirement projections", "Create family education materials"],
+                "conversation_starters": ["How are the Northwestern preparations going?"]
+            }
+        }
+
+    elif focus == "Risk/Volatility":
+        return {
+            "communications": {
+                "total_interactions": 8,
+                "focused_timeline": [
+                    {"date": "Feb 28, 2024", "type": "Call",
+                        "summary": "Banking sector concerns - reassurance provided", "relevance": 10},
+                    {"date": "Jun 22, 2024", "type": "Email",
+                        "summary": "Market volatility questions about positioning", "relevance": 8}
+                ],
+                "key_themes": [
+                    "Periodic anxiety during market stress periods",
+                    "Strong confidence in diversification approach",
+                    "Preference for more communication during volatility"
+                ]
+            },
+            "performance": {
+                "portfolio_return": 8.2,
+                "risk_metrics": {
+                    "volatility": "12.8%",
+                    "max_drawdown": "-8.2%",
+                    "sharpe_ratio": "0.89"
+                }
+            },
+            "meeting_prep": {
+                "executive_summary": "Risk Management Success: Portfolio volatility well-controlled at moderate levels. Client comfort maintained through market stress periods.",
+                "targeted_talking_points": [
+                    {"priority": 1, "topic": "Risk Control",
+                        "point": "Portfolio volatility maintained at appropriate 12.8% level"},
+                    {"priority": 2, "topic": "Downside Protection",
+                        "point": "Maximum drawdown limited to -8.2%"}
+                ],
+                "action_items": ["Continue risk monitoring", "Maintain diversification", "Plan volatility communication"],
+                "conversation_starters": ["How comfortable are you with the current risk level?"]
+            }
+        }
+
+    # Default general response
+    st.write("🔧 **USING DEFAULT/GENERAL RESULTS**")
+    return {
+        "communications": {
+            "total_interactions": 8,
+            "key_themes": [
+                "Highly engaged family with sophisticated discussions",
+                "Successful ESG integration with performance goals",
+                "Proactive planning for life milestones"
+            ]
+        },
+        "performance": {
+            "portfolio_return": 8.2,
+            "ips_compliance": "Fully compliant"
+        },
+        "meeting_prep": {
+            "executive_summary": "Comprehensive success across all planning objectives with strong family engagement and values alignment.",
+            "targeted_talking_points": [
+                {"priority": 1, "topic": "Overall Success",
+                    "point": "Portfolio and planning objectives being met"},
+                {"priority": 2, "topic": "Family Engagement",
+                    "point": "Strong involvement in financial decisions"}
+            ],
+            "action_items": ["Continue current strategy", "Schedule next review", "Monitor performance"],
+            "conversation_starters": ["What aspects of this year's progress are you most proud of?"]
+        }
+    }
+
+# ============================================================================
+# MAIN STREAMLIT APPLICATION
+# ============================================================================
+
 
 def main():
     """Main Streamlit application"""
@@ -203,7 +459,7 @@ def main():
         # Query input section
         st.subheader("❓ Ask MILO Anything About This Client")
 
-        # Query examples
+        # Query examples with session state management (FIXED - no infinite loop)
         st.write("**Try these example queries:**")
 
         example_queries = [
@@ -215,34 +471,38 @@ def main():
             "What has happened with this account over the past year?"
         ]
 
-        # Create clickable example queries
-        selected_query = None
-        for i, example in enumerate(example_queries):
-            if st.button(f"💭 {example}", key=f"example_{i}", use_container_width=True):
-                selected_query = example
+        # Initialize session state for query if it doesn't exist
+        if 'selected_query' not in st.session_state:
+            st.session_state.selected_query = "What are the client's ESG concerns?"
 
-        # Query text area
-        if selected_query:
-            query = st.text_area(
-                "Your question about the client:",
-                value=selected_query,
-                height=100,
-                help="MILO will analyze communications, performance, and generate meeting prep focused on your specific question."
-            )
-        else:
-            query = st.text_area(
-                "Your question about the client:",
-                value="What are the client's ESG concerns?",
-                height=100,
-                help="MILO will analyze communications, performance, and generate meeting prep focused on your specific question."
-            )
+        # Create columns for example query buttons
+        cols = st.columns(2)
+
+        for i, example in enumerate(example_queries):
+            with cols[i % 2]:
+                if st.button(f"💭 {example}", key=f"example_{i}", use_container_width=True):
+                    st.session_state.selected_query = example
+                    # REMOVED st.rerun() - this was causing infinite loop!
+
+        # Query text area - always use session state
+        query = st.text_area(
+            "Your question about the client:",
+            value=st.session_state.selected_query,
+            height=100,
+            help="MILO will analyze communications, performance, and generate meeting prep focused on your specific question.",
+            key="query_input"
+        )
+
+        # Update session state when user types manually (but don't trigger rerun)
+        if query != st.session_state.selected_query:
+            st.session_state.selected_query = query
 
         # Show query analysis preview
         if query.strip():
-            query_preview = analyze_query(query)
+            query_preview = analyze_query_preview(query)
             st.markdown(f"""
             <div class="query-focus-badge">
-                🎯 Query Focus: {query_preview['primary_focus']} | Type: {query_preview['query_type']}
+                🎯 Query Focus: {query_preview['focus']} | Type: {query_preview['type']}
             </div>
             """, unsafe_allow_html=True)
 
@@ -252,7 +512,7 @@ def main():
         with col_btn1:
             if st.button("🚀 Generate Focused Analysis", type="primary", use_container_width=True):
                 if query.strip():
-                    execute_enhanced_milo_analysis(client_name, query)
+                    run_enhanced_milo_analysis(client_name, query)
                 else:
                     st.error("Please enter a question about the client.")
 
@@ -312,51 +572,20 @@ def main():
             """, unsafe_allow_html=True)
 
 
-def analyze_query_preview(query: str) -> dict:
-    """Preview what the query analysis will focus on"""
-
-    query_lower = query.lower()
-
-    focus_keywords = {
-        "ESG/Sustainability": ["esg", "sustainable", "environmental", "values", "green", "ethical"],
-        "Performance": ["performance", "returns", "gains", "profit", "growth"],
-        "Family/Personal": ["family", "daughter", "college", "personal", "emma", "linda"],
-        "Risk/Volatility": ["risk", "volatility", "concerned", "safe", "conservative"],
-        "Communication": ["communication", "contact", "meeting", "updates"],
-        "Portfolio": ["portfolio", "allocation", "funds", "holdings"]
-    }
-
-    # Find best match
-    best_focus = "General"
-    max_matches = 0
-
-    for focus, keywords in focus_keywords.items():
-        matches = sum(1 for keyword in keywords if keyword in query_lower)
-        if matches > max_matches:
-            max_matches = matches
-            best_focus = focus
-
-    # Determine query type
-    if any(word in query_lower for word in ["what", "tell", "show"]):
-        query_type = "Informational"
-    elif any(word in query_lower for word in ["should", "recommend"]):
-        query_type = "Advisory"
-    elif any(word in query_lower for word in ["how", "why", "when"]):
-        query_type = "Analytical"
-    else:
-        query_type = "General"
-
-    return {"focus": best_focus, "type": query_type}
-
-
 def run_enhanced_milo_analysis(client_name: str, query: str):
     """Execute the enhanced MILO analysis with query responsiveness"""
 
     st.markdown("---")
     st.header("🤖 MILO Query-Focused Analysis")
 
-    # Show query processing
+    # Show query processing with DEBUG INFO
     query_analysis = analyze_query_preview(query)
+
+    # DEBUG: Show what's actually happening
+    st.write("**🐛 DEBUG INFO:**")
+    st.write(f"Query received: '{query}'")
+    st.write(f"Focus detected: {query_analysis['focus']}")
+    st.write(f"Query type: {query_analysis['type']}")
 
     st.markdown(f"""
     <div style="background-color: #e3f2fd; padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
@@ -396,8 +625,6 @@ def run_enhanced_milo_analysis(client_name: str, query: str):
     ]
 
     # Execute enhanced agent workflow
-    agent_results = {}
-
     for i, agent_info in enumerate(agents_info):
         # Update progress
         progress = (i + 1) / len(agents_info)
@@ -427,531 +654,233 @@ def run_enhanced_milo_analysis(client_name: str, query: str):
         </div>
         """, unsafe_allow_html=True)
 
-        # Generate enhanced results based on query focus
-        if "Communications" in agent_info['name']:
-            agent_results["communications"] = generate_enhanced_communications_results(
-                query_analysis['focus'])
-        elif "Performance" in agent_info['name']:
-            agent_results["performance"] = generate_enhanced_performance_results(
-                query_analysis['focus'])
-        elif "Meeting" in agent_info['name']:
-            agent_results["meeting_prep"] = generate_enhanced_meeting_prep_results(
-                query_analysis['focus'], query)
-
     progress_bar.progress(1.0)
     status_text.markdown(
         "**✅ Query-Focused Analysis Complete!** All agents have processed your specific question.")
 
-    # Display enhanced results
-    display_enhanced_milo_results(
-        agent_results, client_name, query, query_analysis)
+    # Try to use real agents, fall back to mock data
+    try:
+        # Attempt to import and use the real enhanced agents
+        from enhanced_milo_agents import execute_enhanced_milo_analysis
+        result = execute_enhanced_milo_analysis(client_name, query)
 
+        # If we get a result, display it (this would need custom parsing)
+        st.success("✅ Real agent analysis completed!")
+        st.text("Agent results:")
+        st.text(str(result))
 
-def generate_enhanced_communications_results(focus: str):
-    """Generate communications results focused on specific query type"""
+    except ImportError:
+        st.info("Using demo mode with mock results (enhanced agents not imported)")
 
-    base_results = {
-        "total_interactions": 8,
-        "analysis_approach": f"Filtered and prioritized communications based on {focus} themes"
-    }
+        # Generate and display mock results
+        agent_results = generate_mock_enhanced_results(
+            query, query_analysis['focus'])
+        display_enhanced_milo_results(
+            agent_results, client_name, query, query_analysis)
 
-    if focus == "ESG/Sustainability":
-        base_results.update({
-            "focused_timeline": [
-                {"date": "Aug 15, 2024", "type": "Meeting",
-                    "summary": "ESG expansion discussion - family values alignment", "relevance": 10},
-                {"date": "Jun 22, 2024", "type": "Email",
-                    "summary": "Emma's environmental influence on investment decisions", "relevance": 9},
-                {"date": "Apr 10, 2024", "type": "Meeting",
-                    "summary": "VSGX transition planning - competitive performance", "relevance": 10},
-                {"date": "Mar 20, 2024", "type": "Email",
-                    "summary": "ESG fund research - client doing homework", "relevance": 8},
-                {"date": "Jan 15, 2024", "type": "Email",
-                    "summary": "Initial ESG concerns about VTIAX holdings", "relevance": 9}
-            ],
-            "key_themes": [
-                "Strong family commitment to ESG investing driven by Emma's environmental interests",
-                "Successful VSGX transition with competitive performance vs VTIAX",
-                "Client has become highly knowledgeable about ESG options through research",
-                "Values alignment now as important as return optimization",
-                "Interest in expanding ESG beyond equities to bonds and impact investing"
-            ],
-            "esg_evolution": "Evolved from initial concerns to sophisticated ESG integration strategy",
-            "family_driver": "Emma's environmental science studies and internship driving family ESG commitment"
-        })
+    except Exception as e:
+        st.warning(f"Agent execution error: {str(e)}")
+        st.info("Falling back to demo mode with mock results")
 
-    elif focus == "Performance":
-        base_results.update({
-            "focused_timeline": [
-                {"date": "Aug 15, 2024", "type": "Meeting",
-                    "summary": "YTD 7.8% performance review - on track for goals", "relevance": 10},
-                {"date": "Jun 22, 2024", "type": "Email",
-                    "summary": "Questions about optimizing returns with rate environment", "relevance": 8},
-                {"date": "May 22, 2024", "type": "Email",
-                    "summary": "Tech stock concentration concerns in VTSAX", "relevance": 7},
-                {"date": "Apr 10, 2024", "type": "Meeting",
-                    "summary": "Strong YTD 6.8% performance discussion", "relevance": 9},
-                {"date": "Feb 28, 2024", "type": "Phone Call",
-                    "summary": "Banking sector concerns but reassured by diversification", "relevance": 8}
-            ],
-            "key_themes": [
-                "Consistent satisfaction with risk-adjusted portfolio performance",
-                "Growing sophistication in performance evaluation and market analysis",
-                "ESG integration achieved without performance sacrifice",
-                "Performance discussions now include family goals and values context",
-                "Proactive questions about optimizing returns in changing market environment"
-            ],
-            "performance_satisfaction": "High - client appreciates both absolute and risk-adjusted returns",
-            "sophistication_growth": "Client financial knowledge and analysis skills have increased significantly"
-        })
-
-    elif focus == "Family/Personal":
-        base_results.update({
-            "focused_timeline": [
-                {"date": "Aug 15, 2024", "type": "Meeting",
-                    "summary": "Linda's first joint meeting - family team strengthened", "relevance": 10},
-                {"date": "Jul 18, 2024", "type": "Phone Call",
-                    "summary": "Northwestern campus visit - Emma's excitement", "relevance": 9},
-                {"date": "May 22, 2024", "type": "Email",
-                    "summary": "Emma's summer finance internship success", "relevance": 8},
-                {"date": "Apr 10, 2024", "type": "Meeting",
-                    "summary": "Northwestern acceptance celebration!", "relevance": 10},
-                {"date": "Mar 20, 2024", "type": "Email",
-                    "summary": "College funding strategy and financial aid package", "relevance": 9}
-            ],
-            "key_themes": [
-                "Northwestern acceptance represents successful long-term planning milestone",
-                "Linda's involvement has created powerful family financial planning dynamic",
-                "Emma's financial education accelerating through internship and coursework",
-                "Family approaching investments as multi-generational strategy",
-                "College funding strategy well-positioned for $35K annual payments"
-            ],
-            "family_evolution": "Evolved from individual planning to comprehensive family financial team",
-            "education_success": "Emma's financial sophistication growing rapidly through real-world experience"
-        })
-
-    else:  # General focus
-        base_results.update({
-            "focused_timeline": [
-                {"date": "Aug 15, 2024", "type": "Meeting",
-                    "summary": "Comprehensive family review - all stakeholders engaged", "relevance": 8},
-                {"date": "Jun 22, 2024", "type": "Email",
-                    "summary": "Fed rate decision analysis and positioning questions", "relevance": 7},
-                {"date": "Apr 10, 2024", "type": "Meeting",
-                    "summary": "Northwestern acceptance and ESG transition success", "relevance": 9},
-                {"date": "Mar 20, 2024", "type": "Email",
-                    "summary": "Multi-topic planning discussion", "relevance": 7},
-                {"date": "Jan 15, 2024", "type": "Email",
-                    "summary": "ESG interests and performance satisfaction", "relevance": 8}
-            ],
-            "key_themes": [
-                "Highly engaged client family with sophisticated financial discussions",
-                "Successful integration of performance goals with values alignment",
-                "Proactive communication and planning for major life milestones",
-                "Growing family financial education and involvement"
-            ]
-        })
-
-    return base_results
-
-
-def generate_enhanced_performance_results(focus: str):
-    """Generate performance results focused on specific query type"""
-
-    base_performance = {
-        "portfolio_return": 8.2,
-        "analysis_approach": f"Performance analysis emphasized {focus} metrics"
-    }
-
-    if focus == "ESG/Sustainability":
-        base_performance.update({
-            "esg_performance": {
-                "VSGX": {"return": 5.8, "allocation": 15, "vs_benchmark": "Competitive"},
-                "VTIAX_comparison": {"previous_return": 6.2, "transition_impact": "Minimal"},
-                "esg_cost": "0.4% performance difference - within acceptable range"
-            },
-            "sustainability_metrics": {
-                "esg_allocation": "15% of portfolio in dedicated ESG funds",
-                "values_alignment": "High - screens out fossil fuels and controversial sectors",
-                "impact_potential": "Ready for impact investing expansion"
-            },
-            "esg_recommendations": [
-                "ESG transition successful - consider expansion to other asset classes",
-                "Research green bonds for fixed income ESG integration",
-                "Explore impact investing for 2-3% allocation"
-            ]
-        })
-
-    elif focus == "Performance":
-        base_performance.update({
-            "detailed_performance": {
-                "vs_ips": {"current": 8.2, "target": "7-9%", "status": "Exceeding midpoint"},
-                "risk_adjusted": {"sharpe_ratio": 0.89, "status": "Excellent"},
-                "benchmark": {"excess_return": "+0.8%", "status": "Outperforming"}
-            },
-            "fund_leaders": {
-                "top_performer": {"fund": "VGSLX", "return": 15.3, "impact": "Significant positive contribution"},
-                "steady_performers": ["VTSAX (12.1%)", "VTIAX (6.2%)", "VSGX (5.8%)"],
-                "defensive_anchors": ["VBTLX (2.1%)", "VTABX (1.8%)"]
-            },
-            "performance_drivers": [
-                "Equity allocation benefiting from market strength",
-                "Real estate (VGSLX) exceptional outperformance",
-                "ESG integration not hindering returns",
-                "Bond allocation providing stability and income"
-            ]
-        })
-
-    elif focus == "Risk/Volatility":
-        base_performance.update({
-            "risk_analysis": {
-                "portfolio_volatility": 12.8,
-                "risk_budget": "Appropriate for moderate risk tolerance",
-                "downside_protection": {"max_drawdown": -8.2, "status": "Well controlled"},
-                "diversification": {"correlation_benefit": "Strong", "asset_class_spread": "Effective"}
-            },
-            "risk_recommendations": [
-                "Current risk level appropriate for client profile",
-                "Consider reducing equity allocation as college approaches",
-                "Maintain diversification during market uncertainty"
-            ]
-        })
-
-    else:  # General performance
-        base_performance.update({
-            "overall_metrics": {
-                "annual_return": 8.2,
-                "volatility": 12.8,
-                "sharpe_ratio": 0.89,
-                "max_drawdown": -8.2
-            },
-            "fund_performance": {
-                "VTSAX": {"return": 12.1, "allocation": 40},
-                "VSGX": {"return": 5.8, "allocation": 15},
-                "VTIAX": {"return": 6.2, "allocation": 15},
-                "VBTLX": {"return": 2.1, "allocation": 20},
-                "VGSLX": {"return": 15.3, "allocation": 5},
-                "VTABX": {"return": 1.8, "allocation": 5}
-            }
-        })
-
-    return base_performance
-
-
-def generate_enhanced_meeting_prep_results(focus: str, original_query: str):
-    """Generate meeting prep results focused on specific query type"""
-
-    base_prep = {
-        "query_addressed": original_query,
-        "focus_area": focus,
-        "response_approach": "Targeted analysis with comprehensive context"
-    }
-
-    if focus == "ESG/Sustainability":
-        base_prep.update({
-            "executive_summary": f"ESG Query Response: Client's ESG integration has been highly successful with VSGX performing competitively (5.8% vs 6.2% for replaced VTIAX). Emma's environmental interests are driving strong family commitment to sustainable investing. Client has become highly knowledgeable through research and ready for expanded ESG options including green bonds and impact investing.",
-
-            "targeted_talking_points": [
-                {"priority": 1, "topic": "ESG Success Story",
-                    "point": "VSGX transition performing within 0.4% of previous VTIAX - values achieved without return sacrifice"},
-                {"priority": 2, "topic": "Family Values Driver",
-                    "point": "Emma's environmental studies creating meaningful family investment alignment"},
-                {"priority": 3, "topic": "Expansion Opportunities",
-                    "point": "Ready to explore green bonds and impact investing for further ESG integration"},
-                {"priority": 4, "topic": "Knowledge Evolution",
-                    "point": "Client ESG research sophistication has increased dramatically"}
-            ],
-
-            "esg_action_items": [
-                "Research green bond options for fixed income ESG integration",
-                "Prepare impact investing proposal for 2-3% allocation",
-                "Schedule ESG-focused review with Emma included",
-                "Monitor VSGX performance vs international benchmarks"
-            ],
-
-            "conversation_starters": [
-                "Emma must be proud that your investments now reflect your family's environmental values...",
-                "Your ESG research has been impressive - you've become quite the expert...",
-                "The VSGX transition proves you don't have to choose between values and returns..."
-            ]
-        })
-
-    elif focus == "Performance":
-        base_prep.update({
-            "executive_summary": f"Performance Query Response: Portfolio delivering exceptional 8.2% annual return, exceeding IPS midpoint by 0.2%. Risk-adjusted performance excellent with 0.89 Sharpe ratio. All asset classes contributing positively with VGSLX leading at 15.3%. ESG integration achieved without performance penalty, proving values and returns can align.",
-
-            "targeted_talking_points": [
-                {"priority": 1, "topic": "Outstanding Returns",
-                    "point": "8.2% annual return exceeds IPS midpoint target - strategy working perfectly"},
-                {"priority": 2, "topic": "Risk-Adjusted Excellence",
-                    "point": "0.89 Sharpe ratio demonstrates efficient risk-taking and strong risk management"},
-                {"priority": 3, "topic": "Diversification Success",
-                    "point": "All asset classes contributing - VGSLX standout at 15.3%, bonds providing stability"},
-                {"priority": 4, "topic": "Values Integration",
-                    "point": "ESG transition achieved competitive performance - no return sacrifice for values"}
-            ],
-
-            "performance_action_items": [
-                "Continue monitoring risk-adjusted returns quarterly",
-                "Consider slight VGSLX allocation increase given strong performance",
-                "Maintain discipline during market volatility periods",
-                "Prepare performance attribution analysis for family education"
-            ]
-        })
-
-    elif focus == "Family/Personal":
-        base_prep.update({
-            "executive_summary": f"Family Query Response: Northwestern acceptance represents successful long-term planning with college funding well-positioned. Linda's involvement has strengthened family financial decision-making significantly. Emma's financial education accelerating through internship. Family evolved from individual planning to comprehensive multi-generational strategy with strong values alignment.",
-
-            "targeted_talking_points": [
-                {"priority": 1, "topic": "Northwestern Achievement",
-                    "point": "Emma's acceptance represents successful planning - college funding strategy ready"},
-                {"priority": 2, "topic": "Family Team Strength",
-                    "point": "Linda's analytical involvement creating powerful planning dynamic"},
-                {"priority": 3, "topic": "Emma's Growth",
-                    "point": "Summer internship developing impressive financial sophistication"},
-                {"priority": 4, "topic": "Multi-Generational Approach",
-                    "point": "Family approaching investments with long-term perspective and shared values"}
-            ],
-
-            "family_action_items": [
-                "Finalize college funding automation timeline",
-                "Create educational materials for Emma's continued learning",
-                "Plan Linda's retirement projection scenarios",
-                "Schedule family financial goal-setting session"
-            ]
-        })
-
-    else:  # General comprehensive response
-        base_prep.update({
-            "executive_summary": f"Comprehensive Query Response: Smith Family Trust experiencing exceptional year with 8.2% portfolio return, Northwestern acceptance milestone, successful ESG integration, and strengthened family financial planning approach. All metrics indicating successful strategy execution and high client satisfaction.",
-
-            "targeted_talking_points": [
-                {"priority": 1, "topic": "Overall Success",
-                    "point": "8.2% return exceeding targets while achieving family values alignment"},
-                {"priority": 2, "topic": "Major Milestones",
-                    "point": "Northwestern acceptance and college funding preparation on track"},
-                {"priority": 3, "topic": "Family Evolution",
-                    "point": "Linda's involvement and Emma's education creating strong financial team"},
-                {"priority": 4, "topic": "Strategic Integration",
-                    "point": "ESG implementation without performance sacrifice proves strategy effectiveness"}
-            ]
-        })
-
-    return base_prep
+        # Generate and display mock results
+        agent_results = generate_mock_enhanced_results(
+            query, query_analysis['focus'])
+        display_enhanced_milo_results(
+            agent_results, client_name, query, query_analysis)
 
 
 def display_enhanced_milo_results(results: dict, client_name: str, query: str, query_analysis: dict):
-    """Display enhanced MILO results with query focus"""
+    """Display enhanced MILO results with query focus (no nested columns)"""
 
     st.markdown("---")
     st.header(f"📊 Query-Focused Analysis Results - {client_name}")
+
+    # Safe helpers
+    perf = results.get("performance", {}) or {}
+    comms = results.get("communications", {}) or {}
+    meeting = results.get("meeting_prep", {}) or {}
+    focus = query_analysis.get("focus", "General")
 
     # Query response header
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 15px; margin-bottom: 2rem;">
         <h3 style="margin: 0; color: white;">🎯 Response to: "{query}"</h3>
-        <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Analysis Focus: {query_analysis['focus']} | Response Type: {query_analysis['type']}</p>
+        <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Analysis Focus: {focus} | Response Type: {query_analysis.get('type','General')}</p>
     </div>
     """, unsafe_allow_html=True)
 
     # Executive summary
-    if "meeting_prep" in results:
+    if meeting:
         st.subheader("📋 Executive Summary")
-        st.info(results["meeting_prep"]["executive_summary"])
+        st.info(meeting.get("executive_summary", "Summary unavailable."))
 
-    # Create enhanced tabs
+    # Tabs (OK to use inside a column; just avoid st.columns within these tabs)
     tab1, tab2, tab3, tab4, tab5 = st.tabs(
-        ["🎯 Query Response", "📞 Communications", "📈 Performance", "💬 Talking Points", "✅ Actions"])
+        ["🎯 Query Response", "📞 Communications",
+            "📈 Performance", "💬 Talking Points", "✅ Actions"]
+    )
 
+    # ──────────────────────────────────────────────────────────────────────────
+    # TAB 1 — Direct Response
+    # ──────────────────────────────────────────────────────────────────────────
     with tab1:
         st.subheader("Direct Response to Your Query")
 
-        focus = query_analysis['focus']
-
-        if focus == "ESG/Sustainability" and "communications" in results:
+        if focus == "ESG/Sustainability" and comms:
             st.write("**🌱 ESG Integration Status:**")
-            for theme in results["communications"].get("key_themes", []):
+            for theme in comms.get("key_themes", []):
                 st.markdown(f"• {theme}")
 
-            if "performance" in results and "esg_performance" in results["performance"]:
+            if "esg_performance" in perf:
                 st.write("**📊 ESG Performance Impact:**")
-                esg_perf = results["performance"]["esg_performance"]
+                esg_perf = perf["esg_performance"]
+                vsgx = esg_perf.get("VSGX", {})
+                transition = esg_perf.get(
+                    "transition_impact", "Minimal performance difference")
                 st.success(
-                    f"VSGX: {esg_perf['VSGX']['return']}% return - {esg_perf['esg_cost']}")
+                    f"VSGX: {vsgx.get('return', 5.8)}% return — {transition}")
 
-        elif focus == "Performance" and "performance" in results:
+        elif focus == "Performance" and "portfolio_return" in perf:
             st.write("**📈 Performance Highlights:**")
-            if "detailed_performance" in results["performance"]:
-                perf = results["performance"]["detailed_performance"]
-                col1, col2, col3 = st.columns(3)
+            # Stacked metrics (no columns)
+            st.metric("Annual Return",
+                      f"{perf.get('portfolio_return', 0)}%", "+0.2% vs target")
+            if "detailed_performance" in perf:
+                dp = perf["detailed_performance"]
+                st.metric("Sharpe Ratio", dp.get(
+                    "sharpe_ratio", "0.89"), "Excellent")
+                st.metric("Top Performer", dp.get(
+                    "top_performer", "VGSLX"), "Outstanding")
+            else:
+                st.metric("IPS Status", "✅", "Compliant")
+                st.metric("Risk Level", "Moderate", "12.8%")
 
-                with col1:
-                    st.metric(
-                        "Annual Return", f"{results['performance']['portfolio_return']}%", "+0.2% vs target")
-                with col2:
-                    st.metric(
-                        "Sharpe Ratio", perf["risk_adjusted"]["sharpe_ratio"], "Excellent")
-                with col3:
-                    st.metric(
-                        "vs Benchmark", perf["benchmark"]["excess_return"], "Outperforming")
-
-        elif focus == "Family/Personal" and "communications" in results:
+        # Family/Personal — NEW independent block (fixes elif-after-else bug)
+        if focus == "Family/Personal" and comms:
             st.write("**👨‍👩‍👧 Family Developments:**")
-            if "focused_timeline" in results["communications"]:
-                # Top 4 most relevant
-                for event in results["communications"]["focused_timeline"][:4]:
-                    relevance_color = "🔥" if event["relevance"] >= 9 else "⭐" if event["relevance"] >= 8 else "📌"
-                    st.markdown(
-                        f"**{event['date']}** {relevance_color} {event['summary']}")
+            timeline = comms.get("focused_timeline", [])[:3]
+            for event in timeline:
+                relevance_color = "🔥" if (
+                    event.get("relevance", 5) >= 9) else "⭐"
+                st.markdown(
+                    f"**{event.get('date','')}** {relevance_color} {event.get('summary','')}")
 
-        else:
-            st.write("**📊 Comprehensive Overview:**")
-            st.markdown(f"""
-            - **Portfolio Return:** {results.get('performance', {}).get('portfolio_return', 8.2)}% annually
-            - **Total Communications:** {results.get('communications', {}).get('total_interactions', 8)} interactions analyzed  
-            - **Analysis Focus:** Customized for {focus} topics
-            - **Meeting Readiness:** Complete preparation materials generated
-            """)
+        # Fallback general overview (shown if none of the above paths wrote details)
+        st.write("**📊 Comprehensive Overview:**")
+        st.markdown(
+            f"- **Portfolio Return:** {perf.get('portfolio_return', 8.2)}% annually\n"
+            f"- **Total Communications:** {comms.get('total_interactions', 8)} interactions analyzed\n"
+            f"- **Analysis Focus:** Customized for {focus} topics\n"
+            f"- **Meeting Readiness:** Complete preparation materials generated"
+        )
 
+    # ──────────────────────────────────────────────────────────────────────────
+    # TAB 2 — Communications
+    # ──────────────────────────────────────────────────────────────────────────
     with tab2:
         st.subheader(f"Communications Analysis - {focus} Focus")
-
-        if "communications" in results:
-            comm_data = results["communications"]
-
-            if "focused_timeline" in comm_data:
+        if comms:
+            if "focused_timeline" in comms:
                 st.write("**📅 Most Relevant Communications:**")
-                for item in comm_data["focused_timeline"]:
-                    relevance_stars = "⭐" * \
-                        min(int(item.get("relevance", 5) / 2), 5)
+                for item in comms.get("focused_timeline", []):
+                    relevance_score = item.get("relevance", 5)
+                    relevance_stars = "⭐" * min(int(relevance_score / 2), 5)
                     st.markdown(f"""
                     <div style="padding: 0.75rem; margin: 0.5rem 0; border-left: 3px solid #007bff; background-color: #f8f9fa;">
-                        <strong>{item['date']}</strong> - {item['type']} {relevance_stars}<br>
-                        {item['summary']}
+                        <strong>{item.get('date','')}</strong> - {item.get('type','')} {relevance_stars}<br>
+                        {item.get('summary','')}
                     </div>
                     """, unsafe_allow_html=True)
 
             st.write("**🎯 Key Themes Identified:**")
-            for theme in comm_data.get("key_themes", []):
+            for theme in comms.get("key_themes", []):
                 st.markdown(f"• {theme}")
+        else:
+            st.info("No communications available for this view.")
 
-            if focus == "ESG/Sustainability" and "esg_evolution" in comm_data:
-                st.success(f"**ESG Evolution:** {comm_data['esg_evolution']}")
-            elif focus == "Family/Personal" and "family_evolution" in comm_data:
-                st.success(
-                    f"**Family Evolution:** {comm_data['family_evolution']}")
-
+    # ──────────────────────────────────────────────────────────────────────────
+    # TAB 3 — Performance
+    # ──────────────────────────────────────────────────────────────────────────
     with tab3:
         st.subheader(f"Performance Analysis - {focus} Focus")
+        if perf:
+            # Key metrics (stacked)
+            st.metric("Portfolio Return",
+                      f"{perf.get('portfolio_return', 0)}%", "+0.2% vs IPS")
 
-        if "performance" in results:
-            perf_data = results["performance"]
+            if focus == "ESG/Sustainability" and "esg_performance" in perf:
+                esg = perf["esg_performance"].get("VSGX", {})
+                st.metric("ESG Fund (VSGX)", f"{esg.get('return', 5.8)}%",
+                          f"{esg.get('allocation', 15)}% allocation")
+            else:
+                st.metric("Risk Level", "12.8%", "Moderate")
 
-            # Key metrics
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Portfolio Return",
-                          f"{perf_data['portfolio_return']}%", "+0.2% vs IPS")
-            with col2:
-                if focus == "ESG/Sustainability" and "esg_performance" in perf_data:
-                    esg = perf_data["esg_performance"]["VSGX"]
-                    st.metric(
-                        "ESG Fund (VSGX)", f"{esg['return']}%", f"{esg['allocation']}% allocation")
-                else:
-                    st.metric("Risk Level", "12.8%", "Moderate")
-            with col3:
-                if focus == "Performance" and "detailed_performance" in perf_data:
-                    st.metric(
-                        "Sharpe Ratio", perf_data["detailed_performance"]["risk_adjusted"]["sharpe_ratio"], "Excellent")
-                else:
-                    st.metric("IPS Compliance", "✅", "Fully compliant")
+            st.metric("IPS Compliance", "✅", "Fully compliant")
 
-            # Focus-specific analysis
-            if focus == "ESG/Sustainability" and "esg_performance" in perf_data:
+            # Focus-specific detail for ESG
+            if focus == "ESG/Sustainability" and "esg_performance" in perf:
                 st.write("**🌱 ESG Performance Details:**")
-                esg_perf = perf_data["esg_performance"]
+                esg_perf = perf["esg_performance"]
+                vsgx = esg_perf.get("VSGX", {})
                 st.write(
-                    f"• **VSGX Performance:** {esg_perf['VSGX']['return']}% ({esg_perf['VSGX']['vs_benchmark']})")
-                st.write(f"• **Transition Impact:** {esg_perf['esg_cost']}")
+                    f"• **VSGX Performance:** {vsgx.get('return', 5.8)}% return")
                 st.write(
-                    f"• **ESG Allocation:** {perf_data['sustainability_metrics']['esg_allocation']}")
+                    f"• **Transition Impact:** {esg_perf.get('transition_impact', 'Minimal performance difference')}")
+        else:
+            st.info("No performance data available.")
 
-            elif focus == "Performance" and "performance_drivers" in perf_data:
-                st.write("**🚀 Performance Drivers:**")
-                for driver in perf_data["performance_drivers"]:
-                    st.markdown(f"• {driver}")
-
+    # ──────────────────────────────────────────────────────────────────────────
+    # TAB 4 — Talking Points
+    # ──────────────────────────────────────────────────────────────────────────
     with tab4:
         st.subheader(f"Meeting Talking Points - {focus} Focused")
-
-        if "meeting_prep" in results:
-            meeting_data = results["meeting_prep"]
-
-            if "targeted_talking_points" in meeting_data:
+        if meeting:
+            tps = meeting.get("targeted_talking_points", [])
+            if tps:
                 st.write("**🎯 Prioritized Discussion Topics:**")
-
-                for point in meeting_data["targeted_talking_points"]:
-                    priority_color = "🔴" if point["priority"] == 1 else "🟡" if point["priority"] == 2 else "🟢"
+                for point in tps:
+                    priority = point.get("priority", 1)
+                    priority_color = "🔴" if priority == 1 else "🟡" if priority == 2 else "🟢"
+                    topic = point.get("topic", "Discussion Point")
+                    content = point.get("point", "Talking point content")
                     st.markdown(f"""
                     <div class="talking-point">
-                        {priority_color} <strong>Priority {point['priority']}: {point['topic']}</strong><br>
-                        {point['point']}
+                        {priority_color} <strong>Priority {priority}: {topic}</strong><br>
+                        {content}
                     </div>
                     """, unsafe_allow_html=True)
 
-            if "conversation_starters" in meeting_data:
+            starters = meeting.get("conversation_starters", [])
+            if starters:
                 st.write("**💬 Conversation Starters:**")
-                for starter in meeting_data["conversation_starters"]:
+                for starter in starters:
                     st.markdown(f"• *\"{starter}\"*")
+        else:
+            st.info("No meeting prep data available.")
 
+    # ──────────────────────────────────────────────────────────────────────────
+    # TAB 5 — Actions
+    # ──────────────────────────────────────────────────────────────────────────
     with tab5:
         st.subheader(f"Action Items - {focus} Focused")
+        if meeting:
+            for item in meeting.get("action_items", []):
+                st.checkbox(item, value=False)
 
-        if "meeting_prep" in results:
-            meeting_data = results["meeting_prep"]
-
-            # Focus-specific action items
-            action_key = f"{focus.lower().replace('/', '_')}_action_items"
-            if action_key in meeting_data:
-                st.write(f"**📝 {focus}-Specific Actions:**")
-                for item in meeting_data[action_key]:
-                    if isinstance(item, dict):
-                        priority_color = "🔴" if item.get("priority") == "High" else "🟡" if item.get(
-                            "priority") == "Medium" else "🟢"
-                        st.markdown(
-                            f"{priority_color} **{item.get('action', item)}** ({item.get('timeline', 'TBD')})")
-                    else:
-                        st.checkbox(item, value=False)
-            else:
-                # General action items
-                general_actions = [
-                    "Continue monitoring portfolio performance quarterly",
-                    "Schedule follow-up discussion on query-specific topics",
-                    "Prepare additional analysis based on client interests",
-                    "Plan next review meeting with targeted agenda"
-                ]
-
-                for action in general_actions:
-                    st.checkbox(action, value=False)
-
-            # Export options
             st.markdown("---")
-            col1, col2, col3 = st.columns(3)
+            # Stacked buttons (no columns)
+            if st.button("📄 Download Report", use_container_width=True):
+                st.success(
+                    "Query-focused report downloaded! (Demo - would generate PDF)")
 
-            with col1:
-                if st.button("📄 Download Report", use_container_width=True):
-                    st.success(
-                        "Query-focused report downloaded! (Demo - would generate PDF)")
+            if st.button("📧 Email Summary", use_container_width=True):
+                st.success(
+                    "Targeted summary emailed! (Demo - would send to advisor)")
 
-            with col2:
-                if st.button("📧 Email Summary", use_container_width=True):
-                    st.success(
-                        "Targeted summary emailed! (Demo - would send to advisor)")
-
-            with col3:
-                if st.button("🔄 Ask Follow-up", use_container_width=True):
-                    st.info("Ready for your next query about this client!")
+            if st.button("🔄 Ask Follow-up", use_container_width=True):
+                st.info("Ready for your next query about this client!")
+        else:
+            st.info("No action items available.")
 
 
 def show_portfolio_focus():
@@ -971,35 +900,25 @@ def show_portfolio_focus():
         st.metric("Max Drawdown", "-8.2%", "Well controlled")
         st.metric("IPS Compliance", "✅", "Full compliance")
 
-    # Portfolio composition chart
-    chart_data = pd.DataFrame({
-        'Fund': ['VTSAX', 'VSGX', 'VTIAX', 'VBTLX', 'VGSLX', 'VTABX'],
-        'Return': [12.1, 5.8, 6.2, 2.1, 15.3, 1.8],
-        'Allocation': [40, 15, 15, 20, 5, 5]
-    })
-
-    st.bar_chart(chart_data.set_index('Fund')['Return'])
-
 
 def show_communications_focus():
     """Show communications-focused quick analysis"""
     st.markdown("---")
     st.subheader("💬 Communications Focus View")
 
-    recent_communications = [
-        {"date": "Aug 15", "type": "Meeting", "topic": "Family Review", "sentiment": "Very Positive",
-            "themes": ["Linda involvement", "Emma education", "ESG expansion"]},
-        {"date": "Jul 18", "type": "Call", "topic": "College Tour", "sentiment": "Excited",
-            "themes": ["Northwestern excitement", "Family bonding", "Financial planning"]},
-        {"date": "Jun 22", "type": "Email", "topic": "Fed Rates", "sentiment": "Analytical",
-            "themes": ["Market analysis", "Bond strategy", "Emma pride"]}
+    communications = [
+        {"date": "Aug 15", "type": "Meeting",
+            "topic": "Family Review", "sentiment": "Very Positive"},
+        {"date": "Jul 18", "type": "Call",
+            "topic": "College Tour", "sentiment": "Excited"},
+        {"date": "Jun 22", "type": "Email",
+            "topic": "Fed Rates", "sentiment": "Analytical"}
     ]
 
-    for comm in recent_communications:
+    for comm in communications:
         with st.expander(f"{comm['date']} - {comm['type']}: {comm['topic']} ({comm['sentiment']})"):
-            st.write("**Key Themes:**")
-            for theme in comm['themes']:
-                st.write(f"• {theme}")
+            st.write(
+                "Sample communication details would appear here in the full implementation.")
 
 
 if __name__ == "__main__":
