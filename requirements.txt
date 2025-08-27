@@ -23,3 +23,5 @@ yfinance>=0.2.18
 # Utilities
 python-dotenv>=1.0.0
 requests>=2.31.0
+
+crewai
